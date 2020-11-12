@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 using Telegram.Bot;
 using Telegram.Bot.Args;
 
@@ -7,11 +8,19 @@ namespace TotuusBotti
     class Program
     {
         static ITelegramBotClient botClient;
+        static ManualResetEvent quitEvent = new ManualResetEvent(false);
 
         static void Main()
         {
+            Console.CancelKeyPress += (sender, eArgs) =>
+            {
+                quitEvent.Set();
+                eArgs.Cancel = true;
+            };
+
             var apiToken = Environment.GetEnvironmentVariable("TOTUUSBOTTI_API_TOKEN");
             botClient = new TelegramBotClient(apiToken);
+
             var me = botClient.GetMeAsync().Result;
             Console.WriteLine(
               $"Hello, World! I am user {me.Id} and my name is {me.FirstName}."
@@ -20,8 +29,10 @@ namespace TotuusBotti
             botClient.OnMessage += Bot_OnMessage;
             botClient.StartReceiving();
 
-            Console.WriteLine("Press any key to exit");
-            Console.ReadKey();
+            Console.WriteLine("Press Ctrl+C to exit");
+
+            // Keep program alive until STOP-signal
+            quitEvent.WaitOne();
 
             botClient.StopReceiving();
         }
